@@ -1,57 +1,61 @@
 """
-Authentication Utilities - JWT token management and password hashing
-Handles user authentication, token creation/validation, and security functions
+Authentication Manager - JWT token handling and user authentication
+Handles user creation, authentication, and JWT token management
 """
 
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from config import settings
-from database import get_db
-from models import User
-import secrets
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from utils.env_utils import get_env_str, get_env_int
+from utils.models import User
+from database.database import get_db
 
-# Password hashing context
+# Environment variables
+SECRET_KEY = get_env_str("SECRET_KEY", "your-super-secret-key-change-in-production")
+ALGORITHM = get_env_str("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = get_env_int("ACCESS_TOKEN_EXPIRE_MINUTES", 720)
+
+# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT token security
+# HTTP Bearer token scheme
 security = HTTPBearer()
 
 class AuthManager:
-    """Authentication manager class for handling all auth operations"""
+    """Authentication and user management"""
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verify a plain password against its hash"""
+        """Verify a password against its hash"""
         return pwd_context.verify(plain_password, hashed_password)
     
     @staticmethod
     def get_password_hash(password: str) -> str:
-        """Generate password hash"""
+        """Hash a password"""
         return pwd_context.hash(password)
     
     @staticmethod
-    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         """Create JWT access token"""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
         to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
     
     @staticmethod
     def verify_token(token: str) -> Optional[str]:
         """Verify JWT token and return email"""
         try:
-            payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             email: str = payload.get("sub")
             if email is None:
                 return None
@@ -67,50 +71,58 @@ class AuthManager:
             return None
         if not AuthManager.verify_password(password, user.hashed_password):
             return None
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        db.commit()
+        
         return user
     
     @staticmethod
-    def create_user(db: Session, email: str, username: str, password: str, 
-                   full_name: Optional[str] = None, is_admin: bool = False) -> User:
-        """Create new user"""
+    def create_user(
+        db: Session,
+        email: str,
+        username: str,
+        password: str,
+        full_name: str = None,
+        is_admin: bool = False,
+        is_email_verified: bool = False
+    ) -> User:
+        """Create a new user"""
         # Check if user already exists
-        if db.query(User).filter(User.email == email).first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
+        existing_user = db.query(User).filter(
+            (User.email == email) | (User.username == username)
+        ).first()
         
-        if db.query(User).filter(User.username == username).first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken"
-            )
+        if existing_user:
+            if existing_user.email == email:
+                raise ValueError("Email already registered")
+            if existing_user.username == username:
+                raise ValueError("Username already taken")
         
         # Create new user
         hashed_password = AuthManager.get_password_hash(password)
-        db_user = User(
+        user = User(
             email=email,
             username=username,
             hashed_password=hashed_password,
             full_name=full_name,
-            is_admin=is_admin
+            is_admin=is_admin,
+            is_email_verified=is_email_verified,
+            is_active=True
         )
-        db.add(db_user)
+        
+        db.add(user)
         db.commit()
-        db.refresh(db_user)
-        return db_user
-    
-    @staticmethod
-    def generate_session_token() -> str:
-        """Generate secure session token"""
-        return secrets.token_urlsafe(32)
+        db.refresh(user)
+        
+        return user
 
-# Dependency functions
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """Get current authenticated user"""
+    """Get current user from JWT token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -129,19 +141,12 @@ def get_current_user(
     if user is None:
         raise credentials_exception
     
-    # Update last login
-    user.last_login = datetime.utcnow()
-    db.commit()
-    
     return user
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Get current active user"""
     if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
-        )
+        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 def get_current_admin_user(current_user: User = Depends(get_current_active_user)) -> User:

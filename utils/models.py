@@ -1,12 +1,12 @@
 """
 Database Models - SQLAlchemy models for the Gemini Clone application
-Defines User, Chat, Message, and other database entities with relationships
+Defines User, Chat, Message, OTP verification and other database entities with relationships
 """
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database.database import Base
 import uuid
 
 class User(Base):
@@ -20,6 +20,7 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    is_email_verified = Column(Boolean, default=False)  # Email verification status
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
@@ -90,4 +91,23 @@ class UserSession(Base):
     ip_address = Column(String(45), nullable=True)
     
     # Relationships
-    user = relationship("User") 
+    user = relationship("User")
+
+class OTPVerification(Base):
+    """OTP verification model for email verification during signup"""
+    __tablename__ = "otp_verifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), index=True, nullable=False)
+    otp_code = Column(String(6), nullable=False)
+    purpose = Column(String(50), nullable=False, default="email_verification")  # email_verification, password_reset, etc.
+    is_active = Column(Boolean, default=True)  # Whether OTP is still active
+    is_verified = Column(Boolean, default=False)  # Whether OTP was successfully verified
+    attempts = Column(Integer, default=0)
+    max_attempts = Column(Integer, default=3)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    verified_at = Column(DateTime(timezone=True), nullable=True)  # When OTP was verified
+    
+    # Relationships
+    user = relationship("User", back_populates="otp_verifications") 

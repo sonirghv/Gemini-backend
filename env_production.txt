@@ -1,0 +1,97 @@
+# Production Environment Configuration
+# Copy this file to .env and update with your actual production values
+
+# Environment Settings
+ENVIRONMENT=production
+DEBUG=false
+
+# Database Configuration - PostgreSQL
+DATABASE_URL=postgresql://postgres:your_secure_production_password@your_production_db_host:5432/gemini_clone_production
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_production_password
+POSTGRES_DB=gemini_clone_production
+POSTGRES_HOST=your_production_db_host
+POSTGRES_PORT=5432
+
+# Database Pool Settings
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=30
+DB_POOL_TIMEOUT=30
+DB_POOL_RECYCLE=3600
+
+# JWT Configuration - CHANGE THESE IN PRODUCTION
+SECRET_KEY=your_super_secure_secret_key_minimum_32_characters_long_for_production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=720
+REFRESH_TOKEN_EXPIRE_DAYS=30
+
+# Google Gemini API
+GOOGLE_API_KEY=your_google_gemini_api_key
+
+# Admin Configuration
+ADMIN_EMAIL=admin@yourdomain.com
+ADMIN_PASSWORD=your_secure_admin_password
+
+# Email Configuration (SMTP)
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@yourdomain.com
+SMTP_PASSWORD=your_app_password
+FROM_EMAIL=noreply@yourdomain.com
+FROM_NAME=Your App Name
+SMTP_USE_TLS=true
+
+# Frontend URL
+FRONTEND_URL=https://yourdomain.com
+
+# CORS Configuration (JSON array format)
+ALLOWED_ORIGINS=["https://yourdomain.com", "https://www.yourdomain.com"]
+
+# File Upload Configuration
+MAX_FILE_SIZE=10485760
+UPLOAD_DIR=uploads
+ALLOWED_FILE_TYPES=["image/jpeg", "image/png", "image/gif", "image/webp"]
+
+# Rate Limiting (In-Memory)
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=3600
+
+# Security Settings
+PASSWORD_MIN_LENGTH=8
+MAX_LOGIN_ATTEMPTS=5
+LOCKOUT_DURATION_MINUTES=30
+
+# OTP Settings
+OTP_EXPIRE_MINUTES=10
+OTP_MAX_ATTEMPTS=3
+OTP_RESEND_COOLDOWN_MINUTES=1
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+
+# App Configuration
+APP_NAME=Gemini Clone API
+VERSION=1.0.0
+API_PREFIX=/api/v1
+
+# Health Check
+HEALTH_CHECK_INTERVAL=30
+
+# IMPORTANT SECURITY NOTES:
+# 1. Never use default passwords in production
+# 2. Use strong, unique passwords for all services
+# 3. Enable SSL/TLS for all connections
+# 4. Regularly rotate secrets and API keys
+# 5. Use environment-specific configurations
+# 6. Enable database connection encryption
+# 7. Set up proper firewall rules
+# 8. Use a reverse proxy (nginx) in production
+# 9. Enable rate limiting and DDoS protection
+# 10. Set up monitoring and alerting
+# 11. In-memory rate limiting will reset on server restart
+# 12. Consider using external rate limiting (nginx, cloudflare) for production
+# 13. For Gmail SMTP, you need to:
+#     - Enable 2-factor authentication on your Gmail account
+#     - Generate an "App Password" for this application
+#     - Use the app password in SMTP_PASSWORD, not your regular Gmail password 

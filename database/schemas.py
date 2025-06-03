@@ -1,6 +1,6 @@
 """
 Pydantic Schemas - Request and response models for API validation
-Defines data structures for authentication, chat, messages, and admin operations
+Defines data structures for authentication, chat, messages, OTP verification, and admin operations
 """
 
 from pydantic import BaseModel, EmailStr, validator
@@ -36,6 +36,7 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     is_admin: bool
+    is_email_verified: bool
     created_at: datetime
     last_login: Optional[datetime] = None
     
@@ -46,6 +47,64 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     username: Optional[str] = None
+
+# OTP Verification schemas
+class OTPRequest(BaseModel):
+    email: EmailStr
+    purpose: Optional[str] = "email_verification"
+
+class OTPVerification(BaseModel):
+    email: EmailStr
+    otp_code: str
+    purpose: Optional[str] = "email_verification"
+    
+    @validator('otp_code')
+    def validate_otp_code(cls, v):
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError('OTP must be a 6-digit number')
+        return v
+
+class OTPResponse(BaseModel):
+    success: bool
+    message: str
+    remaining_attempts: Optional[int] = None
+    remaining_seconds: Optional[int] = None
+
+class OTPStatusResponse(BaseModel):
+    has_active_otp: bool
+    message: str
+    remaining_seconds: Optional[int] = None
+    remaining_attempts: Optional[int] = None
+    created_at: Optional[str] = None
+    expires_at: Optional[str] = None
+
+class ResendOTPRequest(BaseModel):
+    email: EmailStr
+    purpose: Optional[str] = "email_verification"
+
+# Pre-registration user data (before OTP verification)
+class PreRegistrationUser(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+    full_name: Optional[str] = None
+    
+    @validator('password')
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters long')
+        return v
+
+class CompleteRegistration(BaseModel):
+    email: EmailStr
+    otp_code: str
+    user_data: PreRegistrationUser
+    
+    @validator('otp_code')
+    def validate_otp_code(cls, v):
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError('OTP must be a 6-digit number')
+        return v
 
 # Authentication schemas
 class Token(BaseModel):
