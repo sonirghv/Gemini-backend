@@ -107,7 +107,4 @@ class OTPVerification(Base):
     max_attempts = Column(Integer, default=3)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=False)
-    verified_at = Column(DateTime(timezone=True), nullable=True)  # When OTP was verified
-    
-    # Relationships
-    user = relationship("User", back_populates="otp_verifications") 
+    verified_at = Column(DateTime(timezone=True), nullable=True)  # When OTP was verified 

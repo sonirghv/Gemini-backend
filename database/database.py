@@ -3,7 +3,7 @@ Database Configuration - Production-ready SQLAlchemy setup for PostgreSQL
 Handles database connection, session management, connection pooling, and base model
 """
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
@@ -99,7 +99,7 @@ class DatabaseManager:
         """Check database connection health"""
         try:
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
             return True
         except Exception as e:
             logger.error(f"Database connection check failed: {e}")
