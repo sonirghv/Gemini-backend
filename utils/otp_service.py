@@ -5,7 +5,7 @@ Handles OTP creation, validation, and email sending for user verification
 
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from utils.env_utils import get_env_int, get_env_bool
@@ -30,6 +30,10 @@ class OTPService:
         """Generate a random OTP code"""
         return ''.join(random.choices(string.digits, k=self.otp_length))
     
+    def _utc_now(self) -> datetime:
+        """Get current UTC time with timezone awareness"""
+        return datetime.now(timezone.utc)
+    
     def create_otp_verification(
         self, 
         db: Session, 
@@ -43,17 +47,19 @@ class OTPService:
             Tuple of (otp_code, email_sent_successfully)
         """
         try:
+            current_time = self._utc_now()
+            
             # Check for existing active OTP
             existing_otp = db.query(OTPVerification).filter(
                 OTPVerification.email == email,
                 OTPVerification.purpose == purpose,
                 OTPVerification.is_active == True,
-                OTPVerification.expires_at > datetime.utcnow()
+                OTPVerification.expires_at > current_time
             ).first()
             
             # Check resend cooldown
             if existing_otp:
-                time_since_creation = datetime.utcnow() - existing_otp.created_at
+                time_since_creation = current_time - existing_otp.created_at
                 cooldown_delta = timedelta(minutes=self.resend_cooldown_minutes)
                 
                 if time_since_creation < cooldown_delta:
@@ -67,7 +73,7 @@ class OTPService:
             
             # Generate new OTP
             otp_code = self.generate_otp()
-            expires_at = datetime.utcnow() + timedelta(minutes=self.otp_expiry_minutes)
+            expires_at = current_time + timedelta(minutes=self.otp_expiry_minutes)
             
             # Create OTP record
             otp_record = OTPVerification(
@@ -113,6 +119,8 @@ class OTPService:
             Tuple of (is_valid, message, otp_record)
         """
         try:
+            current_time = self._utc_now()
+            
             # Find active OTP
             otp_record = db.query(OTPVerification).filter(
                 OTPVerification.email == email,
@@ -124,7 +132,7 @@ class OTPService:
                 return False, "No active OTP found for this email", None
             
             # Check if expired
-            if datetime.utcnow() > otp_record.expires_at:
+            if current_time > otp_record.expires_at:
                 otp_record.is_active = False
                 db.commit()
                 return False, "OTP has expired. Please request a new one", otp_record
@@ -151,7 +159,7 @@ class OTPService:
             
             # Success - mark as verified
             otp_record.is_verified = True
-            otp_record.verified_at = datetime.utcnow()
+            otp_record.verified_at = current_time
             otp_record.is_active = False
             db.commit()
             
@@ -175,6 +183,8 @@ class OTPService:
             Tuple of (success, message)
         """
         try:
+            current_time = self._utc_now()
+            
             # Check for existing active OTP
             existing_otp = db.query(OTPVerification).filter(
                 OTPVerification.email == email,
@@ -186,7 +196,7 @@ class OTPService:
                 return False, "No active OTP found to resend"
             
             # Check cooldown
-            time_since_creation = datetime.utcnow() - existing_otp.created_at
+            time_since_creation = current_time - existing_otp.created_at
             cooldown_delta = timedelta(minutes=self.resend_cooldown_minutes)
             
             if time_since_creation < cooldown_delta:
@@ -213,6 +223,8 @@ class OTPService:
     ) -> Dict[str, Any]:
         """Get OTP status for an email"""
         try:
+            current_time = self._utc_now()
+            
             otp_record = db.query(OTPVerification).filter(
                 OTPVerification.email == email,
                 OTPVerification.purpose == purpose,
@@ -228,13 +240,12 @@ class OTPService:
                     "expires_in_seconds": 0
                 }
             
-            now = datetime.utcnow()
-            is_expired = now > otp_record.expires_at
-            expires_in_seconds = max(0, int((otp_record.expires_at - now).total_seconds()))
+            is_expired = current_time > otp_record.expires_at
+            expires_in_seconds = max(0, int((otp_record.expires_at - current_time).total_seconds()))
             attempts_remaining = max(0, otp_record.max_attempts - otp_record.attempts)
             
             # Check if can resend
-            time_since_creation = now - otp_record.created_at
+            time_since_creation = current_time - otp_record.created_at
             cooldown_delta = timedelta(minutes=self.resend_cooldown_minutes)
             can_resend = time_since_creation >= cooldown_delta
             
@@ -264,8 +275,9 @@ class OTPService:
             return 0
         
         try:
+            current_time = self._utc_now()
             # Delete expired OTPs older than 24 hours
-            cutoff_time = datetime.utcnow() - timedelta(hours=24)
+            cutoff_time = current_time - timedelta(hours=24)
             
             deleted_count = db.query(OTPVerification).filter(
                 OTPVerification.expires_at < cutoff_time
@@ -315,17 +327,17 @@ class OTPService:
     def get_service_stats(self, db: Session) -> Dict[str, Any]:
         """Get OTP service statistics"""
         try:
-            now = datetime.utcnow()
+            current_time = self._utc_now()
             
             # Count active OTPs
             active_otps = db.query(OTPVerification).filter(
                 OTPVerification.is_active == True,
-                OTPVerification.expires_at > now
+                OTPVerification.expires_at > current_time
             ).count()
             
             # Count expired OTPs
             expired_otps = db.query(OTPVerification).filter(
-                OTPVerification.expires_at <= now
+                OTPVerification.expires_at <= current_time
             ).count()
             
             # Count verified OTPs

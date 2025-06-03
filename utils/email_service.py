@@ -100,9 +100,9 @@ class EmailService:
     def send_otp_email(self, to_email: str, otp_code: str, purpose: str = "verification") -> Tuple[bool, str]:
         """Send OTP verification email"""
         
-        app_name = get_env_str("APP_NAME", "Gemini Clone")
+        app_name = get_env_str("APP_NAME", "Leagal AI")
         
-        subject = f"Your {app_name} Verification Code"
+        subject = f"Your Leagal AI Verification Code"
         
         # HTML email template
         html_content = f"""
@@ -168,7 +168,7 @@ class EmailService:
             </div>
             <div class="content">
                 <h2>Hello!</h2>
-                <p>You requested a verification code for your {app_name} account. Please use the code below to complete your {purpose}:</p>
+                <p>You requested a verification code for your Leagal AI account. Please use the code below to complete your {purpose}:</p>
                 
                 <div class="otp-code">
                     {otp_code}
@@ -185,7 +185,7 @@ class EmailService:
                 
                 <p>If you have any questions or need assistance, please contact our support team.</p>
                 
-                <p>Best regards,<br>The {app_name} Team</p>
+                <p>Best regards,<br>The Leagal AI Team</p>
             </div>
             <div class="footer">
                 <p>This is an automated message, please do not reply to this email.</p>
@@ -196,11 +196,11 @@ class EmailService:
         
         # Plain text version
         text_content = f"""
-        {app_name} - Email Verification
+        Leagal AI - Email Verification
         
         Hello!
         
-        You requested a verification code for your {app_name} account.
+        You requested a verification code for your Leagal AI account.
         
         Your verification code is: {otp_code}
         
@@ -210,7 +210,7 @@ class EmailService:
         If you didn't request this code, please ignore this email.
         
         Best regards,
-        The {app_name} Team
+        The Leagal AI Team
         """
         
         return self.send_email(to_email, subject, html_content, text_content)
@@ -260,11 +260,11 @@ class EmailService:
         </head>
         <body>
             <div class="header">
-                <h1>Welcome to {app_name}!</h1>
+                <h1>Welcome to Leagal AI!</h1>
             </div>
             <div class="content">
                 <h2>Hello {username}!</h2>
-                <p>Welcome to {app_name}! We're excited to have you on board.</p>
+                <p>Welcome to Leagal AI! We're excited to have you on board.</p>
                 
                 <p>You can now start chatting with our AI assistant and explore all the features we have to offer.</p>
                 
@@ -272,7 +272,7 @@ class EmailService:
                 
                 <p>Happy chatting!</p>
                 
-                <p>Best regards,<br>The {app_name} Team</p>
+                <p>Best regards,<br>The Leagal AI Team</p>
             </div>
             <div class="footer">
                 <p>This is an automated message, please do not reply to this email.</p>
@@ -282,11 +282,11 @@ class EmailService:
         """
         
         text_content = f"""
-        Welcome to {app_name}!
+        Welcome to Leagal AI!
         
         Hello {username}!
         
-        Welcome to {app_name}! We're excited to have you on board.
+        Welcome to Leagal AI! We're excited to have you on board.
         
         You can now start chatting with our AI assistant and explore all the features we have to offer.
         
@@ -295,7 +295,7 @@ class EmailService:
         Happy chatting!
         
         Best regards,
-        The {app_name} Team
+        The Leagal AI Team
         """
         
         return self.send_email(to_email, subject, html_content, text_content)

@@ -297,6 +297,15 @@ async def send_otp_for_registration(otp_request: OTPRequest, request: Request, d
         
     except HTTPException:
         raise
+    except ValueError as e:
+        # Handle rate limiting and validation errors
+        error_message = str(e)
+        if "wait" in error_message.lower() and "seconds" in error_message.lower():
+            # This is a rate limiting error
+            raise HTTPException(status_code=429, detail=error_message)
+        else:
+            # Other validation errors
+            raise HTTPException(status_code=400, detail=error_message)
     except Exception as e:
         log_error(e, {"email": otp_request.email, "request_id": getattr(request.state, "request_id", None)})
         raise HTTPException(status_code=500, detail=f'Failed to send OTP: {str(e)}')
